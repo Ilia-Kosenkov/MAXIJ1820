@@ -4,6 +4,7 @@
     library(magrittr)
     library(RLibs)
     library(rlang)
+    library(jpeg)
 
     if (!dir.exists(file.path("Source")))
         stop("No `Source` directory found.")
