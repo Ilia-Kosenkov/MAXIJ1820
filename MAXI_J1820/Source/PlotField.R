@@ -5,7 +5,7 @@ PlotField <- function(dat = fieldStars,
                       tckSz = 0.02,
                       isTex = FALSE,
                       decDig = 2) {
-    cols <- c("#000000", brewer.pal(3, "Set1"))
+    cols <- c("#000000", brewer.pal(6, "Paired")[6])
     pchs <- c(19, 15)
     ltys <- c(2, 1)
     szs <- c(2, 3)
@@ -101,13 +101,19 @@ PlotField <- function(dat = fieldStars,
             limits = -rev(xlim),
             breaks = xBreaks$Small,
             labels = EmptyLabels,
-            expand = c(0, 0)) +
+            expand = c(0, 0),
+            sec.axis = sec_axis(~.,
+                breaks = xBreaks$Small,
+                labels = EmptyLabels)) +
         scale_y_continuous(
             name = ylab,
             limits = ylim,
             breaks = yBreaks$Small,
             labels = EmptyLabels,
-            expand = c(0, 0)) +
+            expand = c(0, 0),
+            sec.axis = sec_axis(~.,
+                breaks = yBreaks$Small,
+                labels = EmptyLabels)) +
         scale_color_manual(
             breaks = c(1, 2),
             values = cols,
@@ -130,9 +136,17 @@ PlotField <- function(dat = fieldStars,
                           xBreaks$Large,
                           xLabs,
                           tckSz) %>%
+        GGPlotCustomTicks("top",
+                          xBreaks$Large,
+                          rep("", length(xLabs)),
+                          tckSz) %>%
         GGPlotCustomTicks("left",
                           yBreaks$Large,
                           yLabs,
+                          tckSz) %>%
+        GGPlotCustomTicks("right",
+                          yBreaks$Large,
+                          rep("", length(yLabs)),
                           tckSz)
     return(list(plt))
 }
