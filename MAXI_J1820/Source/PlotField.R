@@ -39,10 +39,10 @@ PlotField <- function(dat = fieldStars,
     img2[, , 1:3] <- img
 
     xlab <- ifelse(isTex,
-                   "\\alpha,~\\mathrm{deg}",
+                   "$\\alpha,~\\mathrm{deg}$",
                    expression(alpha * ", deg"))
     ylab <- ifelse(isTex,
-                   "\\delta,~\\mathrm{deg}",
+                   "$\\delta,~\\mathrm{deg}$",
                    expression(delta * ", deg"))
 
     frmt_1 <- sprintf("%%.%df", decDig)
@@ -153,12 +153,34 @@ PlotField <- function(dat = fieldStars,
 
 
 if (IsRun()) {
-    PlotField() %>%
+
+    isTex <- TRUE
+
+    plt <-
+        PlotField(isTex = isTex) %>%
         GGPlot2Grob(innerMar =
             list(b = unit(1, "cm"),
                  l = unit(1, "cm"),
                  t = unit(1, "cm"),
-                 r = unit(1, "cm"))) %>%
-        GrobPlot
-        
+                 r = unit(1, "cm")))
+
+
+    if (isTex) {
+        if (!dir.exists(file.path("Output", "Plots")))
+            dir.create(file.path("Output", "Plots"), recursive = TRUE)
+
+        tikz(file.path("Output", "Plots", "field.tex"),
+            width = 5.5, height = 5.5,
+            standAlone = TRUE)
+        tryCatch({
+                GrobPlot(plt)
+            },
+            finally = dev.off())
+
+        Tex2Pdf(file.path("Output", "Plots", "field.tex"), verbose = TRUE)
+
+    }
+    else {
+        GrobPlot(plt)
+    }
 }

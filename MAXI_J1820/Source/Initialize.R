@@ -6,6 +6,7 @@
     library(rlang)
     library(jpeg)
     library(RColorBrewer)
+    library(tikzDevice)
 
     if (!dir.exists(file.path("Source")))
         stop("No `Source` directory found.")
