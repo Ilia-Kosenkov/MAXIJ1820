@@ -5,16 +5,24 @@ PlotField <- function(dat = fieldStars,
                       tckSz = 0.02,
                       isTex = FALSE,
                       decDig = 2) {
-
-    fctr <- 1e-2
+    cols <- c("#000000", brewer.pal(3, "Set1"))
+    pchs <- c(19, 15)
+    ltys <- c(2, 1)
+    szs <- c(2, 3)
+    fctr <- 1.2e-2
     data <- fieldStars %>%
         mutate(Lab = NO - 700) %>%
         mutate(Lab = as.character(Lab)) %>%
         mutate(Lab = if_else(Lab == "-100", "MAXI", Lab)) %>%
+        mutate(FieldLab = if_else(Lab == "MAXI", "", Lab)) %>%
+        mutate(MAXILab = if_else(Lab == "MAXI", "MAXI", "")) %>%
+        mutate(Group = if_else(Lab == "MAXI", 2, 1)) %>%
+        mutate(Group = as.factor(Group)) %>%
         mutate(X = PX_D - RA_D[1]) %>%
         mutate(Y = PY_D + DEC_D[1]) %>%
         mutate(XUpp = X + fctr * XPol, XLwr = X - fctr * XPol) %>%
-        mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol)
+        mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol) %>%
+        slice(c(2:n(), 1))
 
     cntr <- data %>%
         filter(Lab == "MAXI") %>%
@@ -75,17 +83,19 @@ PlotField <- function(dat = fieldStars,
             }) %>% unlist
 
     plt <- data %>%
-        ggplot(aes(x = X, y = Y)) +
+        ggplot(aes(x = X, y = Y, col = Group)) +
         DefaultTheme() +
         annotation_custom(rasterGrob(
                 img2,
                 width = unit(1, "npc"),
                 height = unit(1, "npc"))) +
-        geom_point() +
         geom_segment(
-            aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp),
-            size = 1) +
-        geom_text(aes(label = Lab), nudge_y = 0.002) +
+            aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp,
+                linetype = Group), size = 1.1) +
+        geom_point(aes(shape = Group, size = Group)) +
+        geom_text(aes(label = FieldLab), nudge_y = 0.001, nudge_x = 0.002) +
+        geom_text(aes(label = MAXILab), nudge_y = -0.001, nudge_x = - 0.006,
+            size = 4.5) +
         scale_x_continuous(
             name = xlab,
             limits = -rev(xlim),
@@ -97,7 +107,23 @@ PlotField <- function(dat = fieldStars,
             limits = ylim,
             breaks = yBreaks$Small,
             labels = EmptyLabels,
-            expand = c(0, 0))
+            expand = c(0, 0)) +
+        scale_color_manual(
+            breaks = c(1, 2),
+            values = cols,
+            guide = FALSE) +
+        scale_shape_manual(
+            breaks = c(1, 2),
+            values = pchs,
+            guide = FALSE) +
+        scale_size_manual(
+            breaks = c(1, 2),
+            values = szs,
+            guide = FALSE) +
+        scale_linetype_manual(
+            breaks = c(1, 2),
+            values = ltys,
+            guide = FALSE)
 
     plt <- plt %>%
         GGPlotCustomTicks("bot",
@@ -116,7 +142,9 @@ if (IsRun()) {
     PlotField() %>%
         GGPlot2Grob(innerMar =
             list(b = unit(1, "cm"),
-                 l = unit(1, "cm"))) %>%
+                 l = unit(1, "cm"),
+                 t = unit(1, "cm"),
+                 r = unit(1, "cm"))) %>%
         GrobPlot
         
 }
