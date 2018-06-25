@@ -5,12 +5,16 @@ PlotField <- function(dat = fieldStars,
                       tckSz = 0.02,
                       isTex = FALSE,
                       decDig = 2) {
+
+    fctr <- 1e-2
     data <- fieldStars %>%
         mutate(Lab = NO - 700) %>%
         mutate(Lab = as.character(Lab)) %>%
         mutate(Lab = if_else(Lab == "-100", "MAXI", Lab)) %>%
         mutate(X = PX_D - RA_D[1]) %>%
-        mutate(Y = PY_D + DEC_D[1])
+        mutate(Y = PY_D + DEC_D[1]) %>%
+        mutate(XUpp = X + fctr * XPol, XLwr = X - fctr * XPol) %>%
+        mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol)
 
     cntr <- data %>%
         filter(Lab == "MAXI") %>%
@@ -78,6 +82,9 @@ PlotField <- function(dat = fieldStars,
                 width = unit(1, "npc"),
                 height = unit(1, "npc"))) +
         geom_point() +
+        geom_segment(
+            aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp),
+            size = 1) +
         geom_text(aes(label = Lab), nudge_y = 0.002) +
         scale_x_continuous(
             name = xlab,

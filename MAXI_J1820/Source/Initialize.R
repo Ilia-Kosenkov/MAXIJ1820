@@ -34,7 +34,9 @@
         mutate(PX_D = - 0.5 * degSize[1] +
             (PX - xrange[1]) / diff(xrange) * degSize[1]) %>%
         mutate(PY_D = - 0.5 * degSize[2] +
-            (PY - yrange[1]) / diff(yrange) * degSize[2])
+            (PY - yrange[1]) / diff(yrange) * degSize[2]) %>%
+        mutate(XPol = p * cos(2 * pa / 180 * pi)) %>%
+        mutate(YPol = p * sin(2 * pa / 180 * pi))
 
 }
 
