@@ -3,6 +3,7 @@ EmptyLabels <- function(x) rep("", length(x))
 PlotField <- function(dat = fieldStars,
                       x_sz = 5, y_sz = 5,
                       tckSz = 0.02,
+                      image = FALSE,
                       isTex = FALSE,
                       decDig = 2) {
     cols <- c("#000000", brewer.pal(6, "Paired")[6])
@@ -84,11 +85,15 @@ PlotField <- function(dat = fieldStars,
 
     plt <- data %>%
         ggplot(aes(x = X, y = Y, col = Group)) +
-        DefaultTheme() +
-        annotation_custom(rasterGrob(
-                img2,
-                width = unit(1, "npc"),
-                height = unit(1, "npc"))) +
+        DefaultTheme() + {
+            if (image)
+                annotation_custom(rasterGrob(
+                        img2,
+                        width = unit(1, "npc"),
+                        height = unit(1, "npc")))
+            else
+                list()
+            } +
         geom_segment(
             aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp,
                 linetype = Group), size = 1.1) +
@@ -157,7 +162,7 @@ if (IsRun()) {
     isTex <- TRUE
 
     plt <-
-        PlotField(isTex = isTex) %>%
+        PlotField(isTex = isTex, image = TRUE) %>%
         GGPlot2Grob(innerMar =
             list(b = unit(1, "cm"),
                  l = unit(1, "cm"),
