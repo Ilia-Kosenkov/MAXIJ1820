@@ -1,7 +1,9 @@
 EmptyLabels <- function(x) rep("", length(x))
 
-PlotField <- function(dat = fieldStars,
+PlotField <- function(coord = starCoords,
+                      pol = starPol,
                       x_sz = 5, y_sz = 5,
+                      bandInfo = Bands %>% slice(1),
                       tckSz = 0.02,
                       image = FALSE,
                       isTex = FALSE,
@@ -11,19 +13,32 @@ PlotField <- function(dat = fieldStars,
     ltys <- c(2, 1)
     szs <- c(2, 3)
     fctr <- 1.2e-2
-    data <- fieldStars %>%
-        mutate(Lab = NO - 700) %>%
-        mutate(Lab = as.character(Lab)) %>%
-        mutate(Lab = if_else(Lab == "-100", "MAXI", Lab)) %>%
+
+    data <- pol %>%
+        filter(FIL == bandInfo %>% pull(ID)) %>%
+        right_join(starCoords, by = "ID", suffix = c("", ".other")) %>%
         mutate(FieldLab = if_else(Lab == "MAXI", "", Lab)) %>%
         mutate(MAXILab = if_else(Lab == "MAXI", "MAXI", "")) %>%
         mutate(Group = if_else(Lab == "MAXI", 2, 1)) %>%
         mutate(Group = as.factor(Group)) %>%
         mutate(X = PX_D - RA_D[1]) %>%
         mutate(Y = PY_D + DEC_D[1]) %>%
-        mutate(XUpp = X + fctr * XPol, XLwr = X - fctr * XPol) %>%
-        mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol) %>%
-        slice(c(2:n(), 1))
+        mutate(XUpp = X + fctr * q, XLwr = X - fctr * q) %>%
+        mutate(YUpp = Y + fctr * u, YLwr = Y - fctr * u) %>%
+        filter(row_number() == 1 | ID > 0)
+    #data <- fieldStars %>%
+        #mutate(Lab = NO - 700) %>%
+        #mutate(Lab = as.character(Lab)) %>%
+        #mutate(Lab = if_else(Lab == "-100", "MAXI", Lab)) %>%
+        #mutate(FieldLab = if_else(Lab == "MAXI", "", Lab)) %>%
+        #mutate(MAXILab = if_else(Lab == "MAXI", "MAXI", "")) %>%
+        #mutate(Group = if_else(Lab == "MAXI", 2, 1)) %>%
+        #mutate(Group = as.factor(Group)) %>%
+        #mutate(X = PX_D - RA_D[1]) %>%
+        #mutate(Y = PY_D + DEC_D[1]) %>%
+        #mutate(XUpp = X + fctr * XPol, XLwr = X - fctr * XPol) %>%
+        #mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol) %>%
+        #slice(c(2:n(), 1))
 
     cntr <- data %>%
         filter(Lab == "MAXI") %>%
@@ -134,7 +149,13 @@ PlotField <- function(dat = fieldStars,
         scale_linetype_manual(
             breaks = c(1, 2),
             values = ltys,
-            guide = FALSE)
+            guide = FALSE) +
+        GGCustomTextAnnotation(bandInfo %>% pull(Band),
+                               x = -Inf, y = Inf,
+                               hjust = -2, vjust = 2,
+                               gp = gpar(
+                                    fontface = "italic",
+                                    fontsize = 15))
 
     plt <- plt %>%
         GGPlotCustomTicks("bot",
@@ -159,15 +180,16 @@ PlotField <- function(dat = fieldStars,
 
 if (IsRun()) {
 
-    isTex <- TRUE
+    isTex <- FALSE
 
     plt <-
-        PlotField(isTex = isTex, image = TRUE) %>%
+        PlotField(isTex = isTex, image = TRUE,
+            bandInfo = Bands %>% slice(2)) %>%
         GGPlot2Grob(innerMar =
             list(b = unit(1, "cm"),
                  l = unit(1, "cm"),
                  t = unit(1, "cm"),
-                 r = unit(1, "cm")))
+                 r = unit(1, "cm")))        
 
 
     if (isTex) {
