@@ -23,8 +23,13 @@ PlotField <- function(coord = starCoords,
         mutate(Group = as.factor(Group)) %>%
         mutate(X = PX_D - RA_D[1]) %>%
         mutate(Y = PY_D + DEC_D[1]) %>%
-        mutate(XUpp = X + fctr * q, XLwr = X - fctr * q) %>%
-        mutate(YUpp = Y + fctr * u, YLwr = Y - fctr * u) %>%
+        #mutate(XUpp = X + fctr * q, XLwr = X - fctr * q) %>%
+        #mutate(YUpp = Y + fctr * u, YLwr = Y - fctr * u) %>%
+        mutate(PltAng = (pa + 90) / 180 * pi) %>%
+        mutate(XUpp = X + fctr * p * cos(PltAng)) %>%
+        mutate(XLwr = X - fctr * p * cos(PltAng)) %>%
+        mutate(YUpp = Y + fctr * p * sin(PltAng)) %>%
+        mutate(YLwr = Y - fctr * p * sin(PltAng)) %>%
         filter(row_number() == 1 | ID > 0)
     #data <- fieldStars %>%
         #mutate(Lab = NO - 700) %>%
@@ -157,6 +162,22 @@ PlotField <- function(coord = starCoords,
                                     fontface = "italic",
                                     fontsize = 15))
 
+    x0 <- xlim[2] - 0.05 * diff(xlim)
+    y0 <- ylim[1] + 0.05 * diff(ylim)
+
+    scl <- tibble(x = -x0, xend = -x0 + 1 * fctr,
+                  y = y0, yend = y0)
+
+    plt <- plt +
+        geom_segment(aes(x = x, y = y, xend = xend, yend = yend),
+            data = scl, inherit.aes = FALSE, size = 1.5) +
+        GGCustomTextAnnotation(ifelse(isTex,
+                                "$p = 0.5 \\%$",
+                                expression(italic(p) * " = " * 0.5 * "%")),
+                               x = -x0 + 1 * fctr + 0.025 * diff(xlim),
+                               y = y0,
+                               vjust = 0.35)
+
     plt <- plt %>%
         GGPlotCustomTicks("bot",
                           xBreaks$Large,
@@ -177,37 +198,44 @@ PlotField <- function(coord = starCoords,
     return(list(plt))
 }
 
-
-if (IsRun()) {
-
-    isTex <- FALSE
-
+PlotWorker <- function(bandInfo, isTex) {
     plt <-
         PlotField(isTex = isTex, image = TRUE,
-            bandInfo = Bands %>% slice(2)) %>%
+            bandInfo = bandInfo) %>%
         GGPlot2Grob(innerMar =
             list(b = unit(1, "cm"),
                  l = unit(1, "cm"),
                  t = unit(1, "cm"),
-                 r = unit(1, "cm")))        
+                 r = unit(1, "cm")))
 
 
     if (isTex) {
         if (!dir.exists(file.path("Output", "Plots")))
             dir.create(file.path("Output", "Plots"), recursive = TRUE)
 
-        tikz(file.path("Output", "Plots", "field.tex"),
+        pth <- file.path("Output", "Plots",
+            sprintf("field_%s", bandInfo %>% pull(Band)))
+
+        pth_tex <- paste0(pth, ".tex")
+        pth_pdf <- paste0(pth, ".pdf")
+
+        tikz(pth_tex,
             width = 5.5, height = 5.5,
             standAlone = TRUE)
         tryCatch({
-                GrobPlot(plt)
-            },
+        GrobPlot(plt)
+    },
             finally = dev.off())
 
-        Tex2Pdf(file.path("Output", "Plots", "field.tex"), verbose = TRUE)
-
+        Tex2Pdf(pth_tex, verbose = TRUE)
+        Pdf2Eps(pth_pdf)
+        Pdf2Eps(pth_pdf, "-eps", "eps")
     }
     else {
         GrobPlot(plt)
     }
+}
+
+if (IsRun()) {
+    1:nrow(Bands) %>% walk(~PlotWorker(Bands %>% slice(.x), TRUE))
 }
