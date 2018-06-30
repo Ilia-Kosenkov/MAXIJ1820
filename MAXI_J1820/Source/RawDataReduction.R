@@ -14,17 +14,26 @@ ReadDescriptor <- function(path = file.path("Test", "Bin.txt")) {
         str_split("\ ") %>%
         unlist
 
-    return(list(DataFile = fileName,
+    fullPath <- ParsePath(path) %>%
+        extract2(1) %>%
+        extract2(1) %>%
+        extract(1:(length(.) - 1)) %>%
+        c(fileName) %>% paste(collapse = .Platform$file.sep)
+
+    return(list(DataFile = fullPath,
                 ObsIdRange = params %>% extract(1:2) %>% as.integer,
                 Star = params %>% extract(3),
                 FilterId = params %>% extract(4) %>% as.integer))
 }
 
 ReadData <- function(path) {
-
+    data <- read.csv(path) %>%
+        as.tibble %>%
+        rename(JD = T..JD.)
 }
 
 
 if (IsRun()) {
-    ReadDescriptor() %T>% print
+    desc <- ReadDescriptor()
+    ReadData(desc$DataFile)
 }
