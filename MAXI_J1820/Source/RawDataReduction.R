@@ -47,7 +47,8 @@ ProcessObservations <- function(desc, data,
     pxMean <- rep(0, nrow(data) / nObsPerMes)
     pyMean <- rep(0, nrow(data) / nObsPerMes)
 
-    std <- 0.5
+    std <- 0
+    ndis <- 0
 
     trnsfData <- data %>%
         mutate(Q = 10 ^ (0.4 * Obs)) %>%
@@ -59,11 +60,31 @@ ProcessObservations <- function(desc, data,
         summarise(mJD = mean(JD), sQ = sum(Q),
                   PX = GetPX(Q) / sQ,
                   PY = GetPY(Q) / sQ)
-    for (i in 1:1) {
+
+    for (i in 1:15) {
         locData <- prepData %>%
             mutate(WX = 1, WY = 1) %>%
             mutate(mPX = pxMean, mPY = pyMean) %>%
-            mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
+            mutate(dX = abs(PX - mPX), dY = abs(PY - mPY)) %>% {
+                if (i > 1) {
+                    mutate(., WX = if_else(dX > std, (std / dX) ^ 2, WX)) %>%
+                    mutate(WX = if_else(WX < 0.11, 0, WX)) %>%
+                    mutate(WY = if_else(dY > std, (std / dY) ^ 2, WY)) %>%
+                    mutate(WY = if_else(WY < 0.11, 0, WY))
+                }
+                else
+                    .
+
+            }
+
+        #locData %>% select(WX, WY) %>% print(n = nrow(.))
+
+        ndis <- locData %>%
+            select(WX, WY) %>%
+            summarise(sum(WX < 1), sum(WY < 1)) %>%
+            as.numeric %>% sum
+
+        rf <- 50 * ndis / nrow(prepData)
 
         pX <- locData %$% {
             WX %*% PX / sum(WX)
@@ -99,9 +120,20 @@ ProcessObservations <- function(desc, data,
         corrPx <- p * cos(corrA)
         corrPy <- p * sin(corrA)
 
+        pxMean <- rep(pX, nrow(prepData))
+        pyMean <- rep(pY, nrow(prepData))
 
+        rf <- 50 * ndis / nrow(prepData)
+        
+        if (i == 1)
+            std <- sg * sqrt(nrow(prepData))
+        else if (abs(rf - 31) > 1)
+            std <- std  + std * 0.008 * (rf - 31)
+        
         #print(c(pX, pY, p, a, sgX, sgY, sg, eAng))
-        #print(c(corrPx, corrPy, a, corrA))
+        #print(sprintf("%.16e", c(std, (rf - 31) * std * 0.008, ndis)))
+        #print(c(rf, ndis, std, sg))
+        print(c(p, a))
     }
 
 }
