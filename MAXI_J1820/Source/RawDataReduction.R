@@ -32,7 +32,7 @@ ReadData <- function(path) {
         rename(JD = T..JD., Ref = Ref1, Obs = Obj1) 
 }
 
-ProcessObservations <- function(desc, data) {
+ProcessObservations <- function(desc, data, corrPosAng = 35.9) {
     nObsPerMes <- 4
 
     GetPX <- function(x)
@@ -56,11 +56,7 @@ ProcessObservations <- function(desc, data) {
     prepData <- trnsfData %>%
         summarise(mJD = mean(JD), sQ = sum(Q),
                   PX = GetPX(Q) / sQ,
-                  PY = GetPY(Q) / sQ)# %>%
-        #mutate(GX = 1, GY = 1) %>%
-        #mutate(mPX = pxMean, mPY = pyMean) %>%
-    #mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
-
+                  PY = GetPY(Q) / sQ)
     for (i in 1:1) {
         locData <- prepData %>%
             mutate(WX = 1, WY = 1) %>%
@@ -73,7 +69,18 @@ ProcessObservations <- function(desc, data) {
         pY <- locData %$% {
             WY %*% PY / sum(WY)
         }
-        print(c(pX, pY))
+
+        tObs <- locData %>%
+            pull(mJD) %>%
+            mean
+
+        p <- sqrt(pX ^ 2 + pY ^ 2)
+        a <- 90 / pi * atan2(pY, pX) + corrPosAng %>%
+            divide_by(180) %>% {
+                . - floor(.)
+            } %>%
+            multiply_by(180)
+        print(c(pX, pY, p, a))
         
 
     }
