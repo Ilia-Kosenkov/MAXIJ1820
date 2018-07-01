@@ -29,11 +29,42 @@ ReadDescriptor <- function(path = file.path("Test", "Bin.txt")) {
 ReadData <- function(path) {
     data <- read.csv(path) %>%
         as.tibble %>%
-        rename(JD = T..JD.)
+        rename(JD = T..JD., Ref = Ref1, Obs = Obj1) 
 }
 
+ProcessObservations <- function(desc, data) {
+    nObsPerMes <- 4
+
+    GetPX <- function(x)
+        100.0 * (x[1] - x[3])
+
+    GetPY <- function(x)
+        100.0 * (x[2] - x[4])
+
+    # Store mean polarizations between iterations
+    pxMean <- rep(0, nrow(data) / nObsPerMes)
+    pyMean <- rep(0, nrow(data) / nObsPerMes)
+
+    std <- 0.5
+
+    trnsfData <- data %>%
+        mutate(Q = 10 ^ (0.4 * Obs)) %>%
+        mutate(Id = (1:n() - 1) %/% nObsPerMes) %>%
+        mutate(Id = as.integer(Id) + 1L) %>%
+        group_by(Id)
+
+    prepData <- trnsfData %>%
+        summarise(mJD = mean(JD), sQ = sum(Q),
+                  PX = GetPX(Q) / sQ,
+                  PY = GetPY(Q) / sQ) %>%
+        mutate(GX = 1, GY = 1) %>%
+        mutate(mPX = pxMean, mPY = pyMean) %>%
+        mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
+
+}
 
 if (IsRun()) {
     desc <- ReadDescriptor()
-    ReadData(desc$DataFile)
+    data <- ReadData(desc$DataFile)
+    ProcessObservations(desc, data)
 }
