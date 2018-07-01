@@ -63,15 +63,15 @@ ProcessObservations <- function(desc, data) {
 
     for (i in 1:1) {
         locData <- prepData %>%
-            mutate(GX = 1, GY = 1) %>%
+            mutate(WX = 1, WY = 1) %>%
             mutate(mPX = pxMean, mPY = pyMean) %>%
             mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
 
         pX <- locData %$% {
-            GX %*% PX / sum(GX)
+            WX %*% PX / sum(WX)
         }
         pY <- locData %$% {
-            GY %*% PY / sum(GY)
+            WY %*% PY / sum(WY)
         }
         print(c(pX, pY))
         
