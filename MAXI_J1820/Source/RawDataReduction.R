@@ -56,10 +56,27 @@ ProcessObservations <- function(desc, data) {
     prepData <- trnsfData %>%
         summarise(mJD = mean(JD), sQ = sum(Q),
                   PX = GetPX(Q) / sQ,
-                  PY = GetPY(Q) / sQ) %>%
-        mutate(GX = 1, GY = 1) %>%
-        mutate(mPX = pxMean, mPY = pyMean) %>%
-        mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
+                  PY = GetPY(Q) / sQ)# %>%
+        #mutate(GX = 1, GY = 1) %>%
+        #mutate(mPX = pxMean, mPY = pyMean) %>%
+    #mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
+
+    for (i in 1:1) {
+        locData <- prepData %>%
+            mutate(GX = 1, GY = 1) %>%
+            mutate(mPX = pxMean, mPY = pyMean) %>%
+            mutate(dX = abs(PX - mPX), dY = abs(PY - mPY))
+
+        pX <- locData %$% {
+            GX %*% PX / sum(GX)
+        }
+        pY <- locData %$% {
+            GY %*% PY / sum(GY)
+        }
+        print(c(pX, pY))
+        
+
+    }
 
 }
 
