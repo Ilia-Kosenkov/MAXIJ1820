@@ -32,7 +32,9 @@ ReadData <- function(path) {
         rename(JD = T..JD., Ref = Ref1, Obs = Obj1) 
 }
 
-ProcessObservations <- function(desc, data, corrPosAng = 35.9) {
+ProcessObservations <- function(desc, data,
+                        corrPosAng = 35.9,
+                        eqtrialCorrFactor = 0.034907) {
     nObsPerMes <- 4
 
     GetPX <- function(x)
@@ -65,24 +67,41 @@ ProcessObservations <- function(desc, data, corrPosAng = 35.9) {
 
         pX <- locData %$% {
             WX %*% PX / sum(WX)
-        }
+        } %>% as.numeric
         pY <- locData %$% {
             WY %*% PY / sum(WY)
-        }
+        } %>% as.numeric
 
         tObs <- locData %>%
             pull(mJD) %>%
             mean
 
         p <- sqrt(pX ^ 2 + pY ^ 2)
-        a <- 90 / pi * atan2(pY, pX) + corrPosAng %>%
+        a <- (90 / pi * atan2(pY, pX) + corrPosAng) %>%
             divide_by(180) %>% {
                 . - floor(.)
             } %>%
             multiply_by(180)
-        print(c(pX, pY, p, a))
-        
 
+        sgX <- locData %$% {
+            WX %*% (PX - pX) ^ 2 / sum(WX)
+        } %>% as.numeric
+
+        sgY <- locData %$% {
+            WY %*% (PY - pY) ^ 2 / sum(WY)
+        } %>% as.numeric
+
+
+        sg <- sqrt((sgX + sgY) / 2 / (nrow(prepData) - 1))
+        eAng <- 90 / pi * atan2(sg, p)
+
+        corrA <- a * eqtrialCorrFactor
+        corrPx <- p * cos(corrA)
+        corrPy <- p * sin(corrA)
+
+
+        #print(c(pX, pY, p, a, sgX, sgY, sg, eAng))
+        #print(c(corrPx, corrPy, a, corrA))
     }
 
 }
