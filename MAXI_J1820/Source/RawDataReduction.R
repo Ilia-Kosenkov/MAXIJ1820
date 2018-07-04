@@ -32,7 +32,7 @@ ReadData <- function(path) {
         rename(JD = T..JD., Ref = Ref1, Obs = Obj1) 
 }
 
-ProcessObservations <- function(desc, data,
+ProcessObservations <- function(data,
                         corrPosAng = 35.9,
                         eqtrialCorrFactor = 0.034907) {
     nObsPerMes <- 4
@@ -76,8 +76,6 @@ ProcessObservations <- function(desc, data,
                     .
 
             }
-
-        #locData %>% select(WX, WY) %>% print(n = nrow(.))
 
         ndis <- locData %>%
             select(WX, WY) %>%
@@ -124,15 +122,10 @@ ProcessObservations <- function(desc, data,
         pyMean <- rep(pY, nrow(prepData))
 
         rf <- 50 * ndis / nrow(prepData)
-        
         if (i == 1)
             std <- sg * sqrt(nrow(prepData))
         else if (abs(rf - 31) > 1)
             std <- std  + std * 0.008 * (rf - 31)
-        
-        #print(c(pX, pY, p, a, sgX, sgY, sg, eAng))
-        #print(sprintf("%.16e", c(std, (rf - 31) * std * 0.008, ndis)))
-        #print(c(rf, ndis, std, sg))
         print(c(p, a))
     }
 
@@ -141,5 +134,5 @@ ProcessObservations <- function(desc, data,
 if (IsRun()) {
     desc <- ReadDescriptor()
     data <- ReadData(desc$DataFile)
-    ProcessObservations(desc, data)
+    ProcessObservations(data)
 }
