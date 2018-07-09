@@ -4,12 +4,12 @@ PlotField <- function(coord = starCoords,
                       pol = starPol,
                       x_sz = 5, y_sz = 5,
                       bandInfo = Bands %>% slice(1),
-                      tckSz = 0.02,
+                      tckSz = 0.035,
                       image = FALSE,
                       isTex = FALSE,
                       decDig = 2) {
     cols <- c("#000000", brewer.pal(6, "Paired")[6])
-    pchs <- c(19, 15)
+    pchs <- c(19, 18)
     ltys <- c(2, 1)
     szs <- c(2, 3)
     fctr <- 1.2e-2
@@ -118,9 +118,9 @@ PlotField <- function(coord = starCoords,
             aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp,
                 linetype = Group), size = 1.1) +
         geom_point(aes(shape = Group, size = Group)) +
-        geom_text(aes(label = FieldLab), nudge_y = 0.001, nudge_x = 0.002) +
-        geom_text(aes(label = MAXILab), nudge_y = -0.001, nudge_x = - 0.006,
-            size = 4.5) +
+        geom_text(aes(label = FieldLab), nudge_y = 0.002, nudge_x = 0.004) +
+        geom_text(aes(label = MAXILab), nudge_y = -0.001, nudge_x = - 0.010,
+            size = 3.5) +
         scale_x_continuous(
             name = xlab,
             limits = -rev(xlim),
@@ -163,7 +163,7 @@ PlotField <- function(coord = starCoords,
                                     fontsize = 15))
 
     x0 <- xlim[2] - 0.05 * diff(xlim)
-    y0 <- ylim[1] + 0.05 * diff(ylim)
+    y0 <- ylim[1] + 0.10 * diff(ylim)
 
     scl <- tibble(x = -x0, xend = -x0 + 1 * fctr,
                   y = y0, yend = y0)
@@ -199,14 +199,16 @@ PlotField <- function(coord = starCoords,
 }
 
 PlotWorker <- function(bandInfo, isTex) {
+    sz <- 0.75
+    szSmall <- 0.15
     plt <-
         PlotField(isTex = isTex, image = TRUE,
             bandInfo = bandInfo) %>%
         GGPlot2Grob(innerMar =
-            list(b = unit(1, "cm"),
-                 l = unit(1, "cm"),
-                 t = unit(1, "cm"),
-                 r = unit(1, "cm")))
+            list(b = unit(sz, "cm"),
+                 l = unit(sz, "cm"),
+                 t = unit(szSmall, "cm"),
+                 r = unit(szSmall, "cm")))
 
 
     if (isTex) {
@@ -220,7 +222,7 @@ PlotWorker <- function(bandInfo, isTex) {
         pth_pdf <- paste0(pth, ".pdf")
 
         tikz(pth_tex,
-            width = 5.5, height = 5.5,
+            width = 3.5, height = 3.5,
             standAlone = TRUE)
         tryCatch({
         GrobPlot(plt)

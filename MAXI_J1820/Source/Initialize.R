@@ -38,6 +38,9 @@
 
     Bands <<- read_table(file.path("Data", "Bands.dat"),
                         col_types = cols())
+
+    starPol2 <<- read_delim(file.path("Data", "star_pol2.dat"),
+                            delim = "\t", col_types = cols())
 }
 
 .PrepareData <- function(
@@ -65,9 +68,29 @@
             (PY - yrange[1]) / diff(yrange) * degSize[2]) %>%
         mutate(Lab = if_else(ID == 00L, "MAXI", as.character(ID)))
 
+    cols <- Bands %>%
+        pull(Band) %>%
+        map(~paste0(c("p", "a"), .x) %>% map(as.name))
+
+
+    starPol2 <<- Bands %>%
+        pull(Band) %>%
+        map(~select(starPol2, ID, d, ends_with(.x))) %>%
+        map2(cols, ~ rename(.x,
+                !!"p" := !!.y[[1]], !!"pa" := !!.y[[2]])) %>%
+        map2(Bands %>% pull(ID), ~ mutate(.x, FIL = .y)) %>%
+        bind_rows %>%
+        mutate(q = p * cos(pa / 90 * pi),
+               u = p * sin(pa / 90 * pi)) %>%
+        mutate(NO = 700L + ID)
+
     starPol <<- starPol %>%
         mutate(ID = if_else(NO < 700, 600L, NO)) %>%
         mutate(ID = IdConv(ID))
+}
+
+.Compile <- function() {
+    CompileFortran(file.path("Source", "Fortran"))
 }
 
 IsRun <- function() {
@@ -79,6 +102,7 @@ if (!exists(".IsInitialized") ||
     .Initialize()
     .LoadData()
     .PrepareData()
+    .Compile()
 
     .IsInitialized <<- TRUE
 }

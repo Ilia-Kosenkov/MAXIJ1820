@@ -126,13 +126,15 @@ ProcessObservations <- function(data,
             std <- sg * sqrt(nrow(prepData))
         else if (abs(rf - 31) > 1)
             std <- std  + std * 0.008 * (rf - 31)
-        print(c(p, a))
+        #print(c(p, a))
     }
-
+    return(tibble("JD" = prepData %>% pull(mJD) %>% mean, 
+           "P" = p, "PA" = corrA / pi * 90,
+           "Px" = corrPx, "Py" = corrPy))
 }
 
 if (IsRun()) {
-    desc <- ReadDescriptor()
-    data <- ReadData(desc$DataFile)
-    ProcessObservations(data)
+    #desc <- ReadDescriptor()
+    #data <- ReadData(desc$DataFile)
+    #ProcessObservations(data)
 }
