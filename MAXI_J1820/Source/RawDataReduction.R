@@ -264,18 +264,22 @@ if (IsRun()) {
 
     #CompileFortran(file.path("Source", "Fortran"))
 
+    bnd <- "R"
+
    tstFls <- GetRawFileNames(file.path("Test", "RAW")) %>%
         inner_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
         select(-Angle) %>%
         rename(BandID = ID.bnd) %>%
         mutate(FlSz = GetFileSizes(Path)) %>%
+        filter(Band == bnd) %>%
         slice(1)
 
     ProcessFiles(tstFls, method = "Lin",
-        bandInfo = Bands %>% filter(Band == "B"))
+        bandInfo = Bands %>% filter(Band == bnd))
 
     tstFls %>%
         pull(Path) %>%
         ReadData %>%
-        ProcessObservations2(bandInfo = Bands %>% filter(Band == "B"))    %T>% print
+        ProcessObservations2(
+            bandInfo = Bands %>% filter(Band == bnd))    %T>% print
 }
