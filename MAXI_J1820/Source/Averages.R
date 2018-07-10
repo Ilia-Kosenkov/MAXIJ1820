@@ -138,14 +138,55 @@ GetAverageFileNames <- function(path = file.path("Data", "RunTime")) {
         mutate(ID = if_else(Type == "before", 1L, 2L))
 }
 
+CombineResults <- function(path = file.path("Output", "RAW"),
+                           pattern = "res_.\\.txt") {
+
+    data <- dir(path, pattern, full.names = TRUE) %>%
+        map(read_lines) %>%
+        map(function(x) {
+            x %>%
+                str_detect(regex("no[[:blank:]]*fil",
+                    ignore_case = TRUE)) %>%
+            which %>%
+            add(1) -> id
+            x %>% extract(id:length(x))
+        }) %>%
+        map(function(x)
+            discard(x, ~ str_detect(.x, "^[[:blank:]]$")))
+
+    data %>%
+        reduce(c) %>%
+        str_split("\ ") %>%
+        map(~keep(.x, nzchar)) %>%
+        map(as.double) %>%
+        map(matrix, nrow = 1) %>%
+        map(as.tibble) %>%
+        bind_rows %>%
+        setNames(c("ID", "FIL", "PX", "PY", "P", "Ep", 
+            "A", "Ea", "Nobs", "JD")) %>%
+        mutate(ID = as.integer(ID),
+               FIL = as.integer(FIL),
+               Nobs = as.integer(Nobs)) %>%
+        left_join(Bands, by = c("FIL" = "ID")) %>%
+        mutate(Type = if_else(ID == min(ID), "before", "after")) %>%
+        arrange(FIL)
+
+}
+
 if (IsRun()) {
+    #PrepareAvgData()
+
     #avgs <- GetAverageFileNames() %>%
         #mutate(FlSz = GetFileSizes(Path)) %>%
         #left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
         #rename(BandID = ID.bnd) %>%
         #arrange(BandID, ID)
 
-   #ProcessFiles(avgs, 600)
-   #PrepareAvgData()
-   #ProcessFiles(rawFiles)
+    #ProcessFiles(avgs, 600)
+
+    #result <- CombineResults()
+
+    #result %>% WriteFixed(file.path("Output", "Averages.dat"),
+        #frmt = c(rep("%5d", 2), rep("%10.4f", 4), rep("%8.2f", 2),
+                #"%6d", "%16.5f", "%6s", "%8s"))
 }
