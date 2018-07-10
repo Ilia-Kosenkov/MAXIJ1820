@@ -73,8 +73,8 @@ ApplyCorrections <- function(bandInfo = Bands,
         walk(ExecuteUnix)
 }
 
-ProcessFiles <- function(files) {
-    GenerateInputFiles(files)
+ProcessFiles <- function(files, idPrefix = 600) {
+    GenerateInputFiles(files, idPrefix = idPrefix)
     Bands %>%
         pull(Band) %>%
         map(~file.path(".", "Binary", sprintf("polco%s.out", .x))) %>%
@@ -118,16 +118,34 @@ PrepareAvgData <- function(date = 2458222.5) {
                 x %>%
                 extract2("Before") %>%
                 write_csv(path =
-                    file.path(dirName, sprintf("maxi_before_%s.txt", b)))
+                    file.path(dirName, sprintf("maxi_before_%s.csv", b)))
                 x %>%
                 extract2("After") %>%
                 write_csv(path =
-                    file.path(dirName, sprintf("maxi_after_%s.txt", b)))
+                    file.path(dirName, sprintf("maxi_after_%s.csv", b)))
             })
 }
 
+GetAverageFileNames <- function(path = file.path("Data", "RunTime")) {
+    files <- dir(file.path("Data", "RunTime"),
+        pattern = "maxi_.*_.*\\.csv", full.names = TRUE) %>%
+        str_match(".*maxi_(.*)_([BVR])\\.csv") %>% {
+            tibble(
+                   Path = extract(.,, 1),
+                   Band = extract(.,, 3),
+                   Type = extract(.,, 2))
+        } %>%
+        mutate(ID = if_else(Type == "before", 1L, 2L))
+}
+
 if (IsRun()) {
-  
-    PrepareAvgData()
+    #avgs <- GetAverageFileNames() %>%
+        #mutate(FlSz = GetFileSizes(Path)) %>%
+        #left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
+        #rename(BandID = ID.bnd) %>%
+        #arrange(BandID, ID)
+
+   #ProcessFiles(avgs, 600)
+   #PrepareAvgData()
    #ProcessFiles(rawFiles)
 }
