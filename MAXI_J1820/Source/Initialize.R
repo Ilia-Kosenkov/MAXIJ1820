@@ -26,8 +26,6 @@
     if (!dir.exists(file.path("Data")))
         stop("No `Data` directory found.")
 
-   
-
     starCoords <<- read.table(file.path("Data", "star_stats.dat"),
                         TRUE, stringsAsFactors = FALSE) %>%
                 as.tibble
@@ -41,6 +39,11 @@
 
     starPol2 <<- read_delim(file.path("Data", "star_pol2.dat"),
                             delim = "\t", col_types = cols())
+
+    averages <<- read.table(file.path("Data", "Averages.dat"),
+            TRUE,
+            stringsAsFactors = FALSE) %>%
+        as.tibble
 }
 
 .PrepareData <- function(

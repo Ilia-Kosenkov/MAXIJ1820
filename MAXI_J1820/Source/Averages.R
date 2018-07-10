@@ -73,16 +73,17 @@ ApplyCorrections <- function(bandInfo = Bands,
         walk(ExecuteUnix)
 }
 
-ProcessFiles <- function(files, idPrefix = 600) {
+ProcessFiles <- function(files, method = "polco",
+    idPrefix = 600, bandInfo = Bands) {
     GenerateInputFiles(files, idPrefix = idPrefix)
-    Bands %>%
+    bandInfo %>%
         pull(Band) %>%
-        map(~file.path(".", "Binary", sprintf("polco%s.out", .x))) %>%
+        map(~file.path(".", "Binary", sprintf("%s%s.out", method, .x))) %>%
         walk(ExecuteUnix)
 
-    ApplyCorrections()
+    #ApplyCorrections()
 
-    GatherRawOutput(".")
+    #GatherRawOutput(".")
 }
 
 SplitInTwo <- function(files, date, bandInfo = Bands) {

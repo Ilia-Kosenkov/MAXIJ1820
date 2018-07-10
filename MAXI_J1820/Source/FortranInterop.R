@@ -36,4 +36,5 @@ CompileFortran <- function(path) {
 }
 
 if (IsRun()) {
+    CompileFortran(file.path("Source", "Fortran"))
 }
