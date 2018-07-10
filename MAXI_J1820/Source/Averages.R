@@ -4,9 +4,9 @@ GetRawFileNames <- function(path, pattern = ".*maxi?18([bvr])([0-9]+).csv") {
     fls %>% str_match_all(pattern) %>%
         discard(is_empty) %>%
         map(as.tibble) %>%
-        bind_rows %>%
-        setNames(c("Path", "Band", "ID")) %>%
-        mutate(Band = toupper(Band), ID = as.integer(ID))
+        bind_rows #%>%
+        #setNames(c("Path", "Band", "ID")) %>%
+        #mutate(Band = toupper(Band), ID = as.integer(ID))
 }
 
 GetFileSizes <- function(path) {
@@ -42,7 +42,7 @@ GenerateInputFiles <- function(files, bandInfo = Bands, idPrefix = 600) {
 
 GatherRawOutput <- function(path) {
     files <- dir(path,
-        pattern = "(in\\.txt)|(lpo.\\.txt)|(te.\\.txt)|(res_.\\.txt)",
+        pattern = "(in\\.txt)|(lpo.\\.txt)|(te.\\.txt)|(.*_.\\.txt)",
         full.names = TRUE,
         ignore.case = TRUE)
     dirPath <- file.path("Output", "RAW")
@@ -62,28 +62,30 @@ GatherRawOutput <- function(path) {
 }
 
 ApplyCorrections <- function(bandInfo = Bands,
-                starFile = file.path("Test", "maxi.sta")) {
+                starFile = file.path("Test", "maxi.sta"),
+                filePrefix = "res") {
     bandInfo %>%
         pull(Band) %>%
         map(~sprintf("printf \'%s\\nte%s.txt\\n0\\n0\\n\' | %s && %s",
                 starFile,
                 .x,
                 file.path(".", "Binary", "koko.out"),
-                sprintf("mv PRKOKO.txt res_%s.txt", .x))) %>%
+                sprintf("mv PRKOKO.txt %s_%s.txt",filePrefix, .x))) %>%
         walk(ExecuteUnix)
 }
 
 ProcessFiles <- function(files, method = "polco",
-    idPrefix = 600, bandInfo = Bands) {
+    idPrefix = 600, bandInfo = Bands,
+    filePrefix = "res") {
     GenerateInputFiles(files, idPrefix = idPrefix)
     bandInfo %>%
         pull(Band) %>%
         map(~file.path(".", "Binary", sprintf("%s%s.out", method, .x))) %>%
         walk(ExecuteUnix)
 
-    #ApplyCorrections()
+    ApplyCorrections(filePrefix = filePrefix)
 
-    #GatherRawOutput(".")
+    GatherRawOutput(".")
 }
 
 SplitInTwo <- function(files, date, bandInfo = Bands) {
@@ -102,6 +104,9 @@ SplitInTwo <- function(files, date, bandInfo = Bands) {
 
 PrepareAvgData <- function(date = 2458222.5) {
     rawFiles <- GetRawFileNames(file.path("Test", "RAW")) %>%
+        setNames(c("Path", "Band", "ID")) %>%
+        mutate(Band = toupper(Band)) %>%
+        mutate(ID = as.integer(ID)) %>%
         mutate(FlSz = GetFileSizes(Path)) %>%
         left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
         rename(BandID = ID.bnd)
@@ -140,7 +145,7 @@ GetAverageFileNames <- function(path = file.path("Data", "RunTime")) {
 }
 
 CombineResults <- function(path = file.path("Output", "RAW"),
-                           pattern = "res_.\\.txt") {
+                           pattern = "maxi_avg_.\\.txt") {
 
     data <- dir(path, pattern, full.names = TRUE) %>%
         map(read_lines) %>%
@@ -169,25 +174,90 @@ CombineResults <- function(path = file.path("Output", "RAW"),
                FIL = as.integer(FIL),
                Nobs = as.integer(Nobs)) %>%
         left_join(Bands, by = c("FIL" = "ID")) %>%
+        select(-Px, -Py, -Angle) %>%
         mutate(Type = if_else(ID == min(ID), "before", "after")) %>%
         arrange(FIL)
 
 }
 
+GetStats <- function() {
+    avgs <- GetAverageFileNames() %>%
+        mutate(FlSz = GetFileSizes(Path)) %>%
+        left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
+        rename(BandID = ID.bnd) %>%
+        select(-Px, - Py, - Angle) %>%
+        arrange(BandID, ID)
+
+    bands <- avgs %>%
+        pull(Band) %>%
+        unique
+
+    bands %>%
+        map(~filter(avgs, Band == .x)) %>%
+        map(~arrange(.x, ID)) %>%
+        map(function(x) {
+            bnd <- x %>% pull(Band) %>% first
+            bndInfo <- Bands %>% filter(Band == bnd)
+            x %>% pull(Path) %>%
+                map(ReadData) %>%
+                map(ProcessObservations2, bandInfo = bndInfo) %>%
+                map(function(y) {
+                    mean <- y %>%
+                        extract(1, c("Px", "Py")) %>%
+                        as.numeric
+
+                    var <- y %>%
+                        extract(1, c("SGx", "SGy")) %>%
+                        as.numeric
+
+                    cov <- y %>%
+                        extract(1, "Cov") %>%
+                        as.numeric
+
+                    n <- y %>%
+                        extract(1, "N") %>%
+                        as.integer
+
+                    list(mean = mean,
+                         sigma = matrix(c(var[1], cov, cov, var[2]), nrow = 2),
+                         n = n,
+                         band = bnd)
+                })
+
+        })
+}
+
 if (IsRun()) {
+    #CompileFortran(file.path("Source", "Fortran"))
+
     #PrepareAvgData()
 
     #avgs <- GetAverageFileNames() %>%
         #mutate(FlSz = GetFileSizes(Path)) %>%
         #left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
         #rename(BandID = ID.bnd) %>%
+        #select(-Px, - Py, - Angle) %>%
         #arrange(BandID, ID)
 
-    #ProcessFiles(avgs, 600)
+    #ProcessFiles(avgs, method = "Lin", idPrefix = 600, filePrefix = "maxi_avg")
 
-    #result <- CombineResults()
+    #result <<- CombineResults()
 
     #result %>% WriteFixed(file.path("Output", "Averages.dat"),
-        #frmt = c(rep("%5d", 2), rep("%10.4f", 4), rep("%8.2f", 2),
-                #"%6d", "%16.5f", "%6s", "%8s"))
+    #frmt = c(rep("%5d", 2), rep("%10.4f", 4), rep("%8.2f", 2),
+    #"%6d", "%16.5f", "%6s", "%8s"))
+
+    GetStats() %>%
+        map(function(x) {
+            HottellingT2Test(
+                    x[[1]]$mean, x[[2]]$mean,
+                    x[[1]]$sigma, x[[2]]$sigma,
+                    x[[1]]$n, x[[2]]$n) %>%
+                mutate(Band = x[[1]]$band)
+    }) %>%
+    bind_rows %>%
+    select(Band, everything()) %>%
+    WriteFixed(file.path("Output", "stat_test.dat"),
+        frmt = c("%6s", "%12.6f", "%12.6f", rep("%16.6e", 4), rep("%5d", 2)))
+   
 }

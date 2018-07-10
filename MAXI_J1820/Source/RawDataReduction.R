@@ -258,28 +258,30 @@ ProcessObservations2 <- function(data,
 
 if (IsRun()) {
 
-    #dirPath <- file.path("Data", "RunTime")
-    #ReadData(file.path("Data", "RunTIme", "maxi_after_B.csv")) %>%
-    #ProcessObservations() %T>% print
+    CompileFortran(file.path("Source", "Fortran"))
 
-    #CompileFortran(file.path("Source", "Fortran"))
-
-    bnd <- "R"
-
-   tstFls <- GetRawFileNames(file.path("Test", "RAW")) %>%
+    tstFls <- GetRawFileNames(file.path("Test", "RAW")) %>%
+        setNames(c("Path", "Band", "ID")) %>%
+        mutate(ID = as.integer(ID)) %>%
+        mutate(Band = toupper(Band)) %>%
         inner_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
-        select(-Angle) %>%
+        select(-Angle, - Px, - Py) %>%
         rename(BandID = ID.bnd) %>%
         mutate(FlSz = GetFileSizes(Path)) %>%
-        filter(Band == bnd) %>%
-        slice(1)
+        arrange(Band, ID)
 
-    ProcessFiles(tstFls, method = "Lin",
-        bandInfo = Bands %>% filter(Band == bnd))
 
-    tstFls %>%
-        pull(Path) %>%
-        ReadData %>%
-        ProcessObservations2(
-            bandInfo = Bands %>% filter(Band == bnd))    %T>% print
+    fieldFls <- GetRawFileNames(file.path("Test", "RAW"),
+            pattern = ".*maxi([0-9]+)([bvr])\\.csv") %>%
+        setNames(c("Path", "ID", "Band")) %>%
+        mutate(ID = as.integer(ID)) %>%
+        mutate(Band = toupper(Band)) %>%
+        inner_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
+        select(-Angle, - Px, - Py) %>%
+        rename(BandID = ID.bnd) %>%
+        mutate(FlSz = GetFileSizes(Path)) %>%
+        arrange(Band, ID) 
+
+    ProcessFiles(tstFls, method = "Lin", idPrefix = 600, filePrefix = "maxi")
+    ProcessFiles(fieldFls, method = "Lin", idPrefix = 700, filePrefix = "field")
 }
