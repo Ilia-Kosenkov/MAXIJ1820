@@ -1,59 +1,57 @@
 EmptyLabels <- function(x) rep("", length(x))
 
-PlotField <- function(coord = starCoords,
-                      pol = starPol,
+PlotField <- function(pol, avg,
+                      coord = starCoords,
                       x_sz = 5, y_sz = 5,
                       bandInfo = Bands %>% slice(1),
                       tckSz = 0.035,
                       image = FALSE,
                       isTex = FALSE,
                       decDig = 2) {
-    cols <- c("#000000", brewer.pal(6, "Paired")[6])
-    pchs <- c(19, 18)
-    ltys <- c(2, 1)
-    szs <- c(2, 3)
+    cols <- c("#000000", brewer.pal(6, "Paired")[c(6, 2)])
+    pchs <- c(19, 15, 15)
+    ltys <- c(5, 1, 1)
+    szs <- c(1.75, 2.25, 2.25)
     fctr <- 1.2e-2
+
+    avgData <- avg %>%
+        filter(FIL == bandInfo %>% pull(ID)) %>%
+        inner_join(coord, by = c("AvgID" = "NO"),
+            suffix = c("", ".other")) %>%
+        mutate(Group = 1:n()) %>%
+        select(PX_D, PY_D, RA_D, DEC_D, A, P, Group) %>%
+        arrange(desc(Group))
+
+    avgRA <- avgData %>% pull(RA_D) %>% mean
+    avgDEC <- avgData %>% pull(DEC_D) %>% mean
+
+    avgData %<>%
+        select(-RA_D, - DEC_D) %>%
+        mutate(Lab = "")
 
     data <- pol %>%
         filter(FIL == bandInfo %>% pull(ID)) %>%
-        right_join(starCoords, by = "ID", suffix = c("", ".other")) %>%
-        mutate(FieldLab = if_else(Lab == "MAXI", "", Lab)) %>%
-        mutate(MAXILab = if_else(Lab == "MAXI", "MAXI", "")) %>%
-        mutate(Group = if_else(Lab == "MAXI", 2, 1)) %>%
+        left_join(coord, by = c("ID" = "NO"),
+            suffix = c("", ".other")) %>%
+        mutate(Group = 0) %>%
+        mutate(Lab = as.character(ID.other)) %>%
+        select(PX_D, PY_D, A, P, Group, Lab) %>%
+        bind_rows(avgData) %>%
+        mutate(X = PX_D - avgRA) %>%
+        mutate(Y = PY_D + avgDEC) %>%
+        mutate(PltAng = (A + 90) / 180 * pi) %>%
+        mutate(XUpp = X + fctr * P * cos(PltAng)) %>%
+        mutate(XLwr = X - fctr * P * cos(PltAng)) %>%
+        mutate(YUpp = Y + fctr * P * sin(PltAng)) %>%
+        mutate(YLwr = Y - fctr * P * sin(PltAng)) %>%
         mutate(Group = as.factor(Group)) %>%
-        mutate(X = PX_D - RA_D[1]) %>%
-        mutate(Y = PY_D + DEC_D[1]) %>%
-        #mutate(XUpp = X + fctr * q, XLwr = X - fctr * q) %>%
-        #mutate(YUpp = Y + fctr * u, YLwr = Y - fctr * u) %>%
-        mutate(PltAng = (pa + 90) / 180 * pi) %>%
-        mutate(XUpp = X + fctr * p * cos(PltAng)) %>%
-        mutate(XLwr = X - fctr * p * cos(PltAng)) %>%
-        mutate(YUpp = Y + fctr * p * sin(PltAng)) %>%
-        mutate(YLwr = Y - fctr * p * sin(PltAng)) %>%
-        filter(row_number() == 1 | ID > 0)
-    #data <- fieldStars %>%
-        #mutate(Lab = NO - 700) %>%
-        #mutate(Lab = as.character(Lab)) %>%
-        #mutate(Lab = if_else(Lab == "-100", "MAXI", Lab)) %>%
-        #mutate(FieldLab = if_else(Lab == "MAXI", "", Lab)) %>%
-        #mutate(MAXILab = if_else(Lab == "MAXI", "MAXI", "")) %>%
-        #mutate(Group = if_else(Lab == "MAXI", 2, 1)) %>%
-        #mutate(Group = as.factor(Group)) %>%
-        #mutate(X = PX_D - RA_D[1]) %>%
-        #mutate(Y = PY_D + DEC_D[1]) %>%
-        #mutate(XUpp = X + fctr * XPol, XLwr = X - fctr * XPol) %>%
-        #mutate(YUpp = Y + fctr * YPol, YLwr = Y - fctr * YPol) %>%
-        #slice(c(2:n(), 1))
-
-    cntr <- data %>%
-        filter(Lab == "MAXI") %>%
-        select(RA_D, DEC_D) %>%
-        as.numeric
+        select(X, Y, Group, Lab,
+            XLwr, YLwr, XUpp, YUpp)
 
     scl <- c(x_sz, y_sz) / 60.0
 
-    xlim <- cntr[1] + 0.5 * c(-1, 1) * scl[1]
-    ylim <- cntr[2] + 0.5 * c(-1, 1) * scl[2]
+    xlim <- avgRA + 0.5 * c(-1, 1) * scl[1]
+    ylim <- avgDEC + 0.5 * c(-1, 1) * scl[2]
 
     img <- jpeg::readJPEG(file.path("Data", "ASASSN-18ey-BRIR5x5.jpg"))
     img2 <- array(0.35, dim = dim(img) + c(0, 0, 1))
@@ -114,13 +112,13 @@ PlotField <- function(coord = starCoords,
             else
                 list()
             } +
+        geom_point(aes(shape = Group, size = Group)) +
         geom_segment(
             aes(x = XLwr, y = YLwr, xend = XUpp, yend = YUpp,
                 linetype = Group), size = 1.1) +
-        geom_point(aes(shape = Group, size = Group)) +
-        geom_text(aes(label = FieldLab), nudge_y = 0.002, nudge_x = 0.004) +
-        geom_text(aes(label = MAXILab), nudge_y = -0.001, nudge_x = - 0.010,
-            size = 3.5) +
+        geom_text(aes(X, Y, label = Lab),
+            nudge_x = scl[1] * 0.025,
+            nudge_y = scl[2] * 0.02) +
         scale_x_continuous(
             name = xlab,
             limits = -rev(xlim),
@@ -160,7 +158,8 @@ PlotField <- function(coord = starCoords,
                                hjust = -2, vjust = 2,
                                gp = gpar(
                                     fontface = "italic",
-                                    fontsize = 15))
+                                    fontsize = 15)) +
+        geom_point(data = data %>% slice(n() - 1:0))
 
     x0 <- xlim[2] - 0.05 * diff(xlim)
     y0 <- ylim[1] + 0.10 * diff(ylim)
@@ -171,12 +170,12 @@ PlotField <- function(coord = starCoords,
     plt <- plt +
         geom_segment(aes(x = x, y = y, xend = xend, yend = yend),
             data = scl, inherit.aes = FALSE, size = 1.5) +
-        GGCustomTextAnnotation(ifelse(isTex,
+            GGCustomTextAnnotation(ifelse(isTex,
                                 "$p = 0.5 \\%$",
                                 expression(italic(p) * " = " * 0.5 * "%")),
-                               x = -x0 + 1 * fctr + 0.025 * diff(xlim),
-                               y = y0,
-                               vjust = 0.35)
+                                x = -x0 + 1 * fctr + 0.025 * diff(xlim),
+                                y = y0,
+                                vjust = 0.35)
 
     plt <- plt %>%
         GGPlotCustomTicks("bot",
@@ -198,11 +197,12 @@ PlotField <- function(coord = starCoords,
     return(list(plt))
 }
 
-PlotWorker <- function(bandInfo, isTex) {
+PlotWorker <- function(data, avg, bandInfo, isTex, prefix = "") {
     sz <- 0.75
     szSmall <- 0.15
     plt <-
-        PlotField(isTex = isTex, image = TRUE,
+        PlotField(pol = data, avg = avg,
+            isTex = isTex, image = TRUE,
             bandInfo = bandInfo) %>%
         GGPlot2Grob(innerMar =
             list(b = unit(sz, "cm"),
@@ -216,7 +216,9 @@ PlotWorker <- function(bandInfo, isTex) {
             dir.create(file.path("Output", "Plots"), recursive = TRUE)
 
         pth <- file.path("Output", "Plots",
-            sprintf("field_%s", bandInfo %>% pull(Band)))
+            sprintf("%sfield_%s",
+                ifelse(nzchar(prefix), paste0(prefix, "_"), ""),
+                bandInfo %>% pull(Band)))
 
         pth_tex <- paste0(pth, ".tex")
         pth_pdf <- paste0(pth, ".pdf")
@@ -239,5 +241,44 @@ PlotWorker <- function(bandInfo, isTex) {
 }
 
 if (IsRun()) {
-    1:nrow(Bands) %>% walk(~PlotWorker(Bands %>% slice(.x), TRUE))
+
+    isTex <- TRUE
+    bandInfo <- Bands
+
+    avgData <- CombineResults() %>%
+        mutate(AvgID = 10L * as.integer(ID / 10))
+    starData <- CombineResults(pattern = "field_.\\.txt") %>%
+        select(-Type)
+
+    starData %>% {
+            map(pull(bandInfo, Band),
+                function(x) filter(., Band == x))
+        }  %>%
+        walk2(seq.int(length.out = nrow(bandInfo)),
+            ~ PlotWorker(.x, 
+                    avgData %>%
+                        filter(Band == extract2(bandInfo, .y, "Band")),
+                bandInfo %>% slice(.y), isTex, "comb"))
+
+    starData %>% {
+            map(pull(bandInfo, Band),
+                function(x) filter(., Band == x))
+        }  %>%
+        walk2(seq.int(length.out = nrow(bandInfo)),
+            ~ PlotWorker(.x, 
+                    avgData %>%
+                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        filter(Type == "before"),
+                bandInfo %>% slice(.y), isTex, "before"))
+
+    starData %>% {
+            map(pull(bandInfo, Band),
+                function(x) filter(., Band == x))
+        }  %>%
+        walk2(seq.int(length.out = nrow(bandInfo)),
+            ~ PlotWorker(.x, 
+                    avgData %>%
+                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        filter(Type == "after"),
+                bandInfo %>% slice(.y), isTex, "after"))
 }

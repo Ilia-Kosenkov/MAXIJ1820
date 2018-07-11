@@ -228,24 +228,24 @@ GetStats <- function() {
 }
 
 if (IsRun()) {
-    #CompileFortran(file.path("Source", "Fortran"))
+    CompileFortran(file.path("Source", "Fortran"))
 
-    #PrepareAvgData()
+    PrepareAvgData()
 
-    #avgs <- GetAverageFileNames() %>%
-        #mutate(FlSz = GetFileSizes(Path)) %>%
-        #left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
-        #rename(BandID = ID.bnd) %>%
-        #select(-Px, - Py, - Angle) %>%
-        #arrange(BandID, ID)
+    avgs <- GetAverageFileNames() %>%
+        mutate(FlSz = GetFileSizes(Path)) %>%
+        left_join(Bands, by = "Band", suffix = c("", ".bnd")) %>%
+        rename(BandID = ID.bnd) %>%
+        select(-Px, - Py, - Angle) %>%
+        arrange(BandID, ID)
 
-    #ProcessFiles(avgs, method = "Lin", idPrefix = 600, filePrefix = "maxi_avg")
+    ProcessFiles(avgs, method = "Lin", idPrefix = 600, filePrefix = "maxi_avg")
 
-    #result <<- CombineResults()
+    result <- CombineResults()
 
-    #result %>% WriteFixed(file.path("Output", "Averages.dat"),
-    #frmt = c(rep("%5d", 2), rep("%10.4f", 4), rep("%8.2f", 2),
-    #"%6d", "%16.5f", "%6s", "%8s"))
+    result %>% WriteFixed(file.path("Output", "Averages.dat"),
+    frmt = c(rep("%5d", 2), rep("%10.4f", 4), rep("%8.2f", 2),
+    "%6d", "%16.5f", "%6s", "%8s"))
 
     GetStats() %>%
         map(function(x) {
