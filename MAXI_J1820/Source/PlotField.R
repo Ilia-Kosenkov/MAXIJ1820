@@ -7,8 +7,9 @@ PlotField <- function(pol, avg,
                       tckSz = 0.035,
                       image = FALSE,
                       isTex = FALSE,
-                      decDig = 2) {
-    cols <- c("#000000", brewer.pal(6, "Paired")[c(6, 2)])
+                      decDig = 2,
+                      tickGp = gpar(lwd = 2.5)) {
+    cols <- c("#000000", brewer.pal(6, "Paired")[c(2, 6)])
     pchs <- c(19, 15, 15)
     ltys <- c(5, 1, 1)
     szs <- c(1.75, 2.25, 2.25)
@@ -159,7 +160,9 @@ PlotField <- function(pol, avg,
                                gp = gpar(
                                     fontface = "italic",
                                     fontsize = 15)) +
-        geom_point(data = data %>% slice(n() - 1:0))
+        geom_point(data = data %>% slice(n() - 1:0),
+                   aes(x = X, y = Y, col = Group,
+                    shape = Group, size = Group))
 
     x0 <- xlim[2] - 0.05 * diff(xlim)
     y0 <- ylim[1] + 0.10 * diff(ylim)
@@ -181,19 +184,23 @@ PlotField <- function(pol, avg,
         GGPlotCustomTicks("bot",
                           xBreaks$Large,
                           xLabs,
-                          tckSz) %>%
+                          tckSz,
+                          tickGp = tickGp) %>%
         GGPlotCustomTicks("top",
                           xBreaks$Large,
                           rep("", length(xLabs)),
-                          tckSz) %>%
+                          tckSz,
+                          tickGp = tickGp) %>%
         GGPlotCustomTicks("left",
                           yBreaks$Large,
                           yLabs,
-                          tckSz) %>%
+                          tckSz,
+                          tickGp = tickGp) %>%
         GGPlotCustomTicks("right",
                           yBreaks$Large,
                           rep("", length(yLabs)),
-                          tckSz)
+                          tckSz,
+                          tickGp = tickGp)
     return(list(plt))
 }
 
@@ -255,30 +262,30 @@ if (IsRun()) {
                 function(x) filter(., Band == x))
         }  %>%
         walk2(seq.int(length.out = nrow(bandInfo)),
-            ~ PlotWorker(.x, 
+            ~ PlotWorker(.x,
                     avgData %>%
                         filter(Band == extract2(bandInfo, .y, "Band")),
                 bandInfo %>% slice(.y), isTex, "comb"))
 
-    starData %>% {
-            map(pull(bandInfo, Band),
-                function(x) filter(., Band == x))
-        }  %>%
-        walk2(seq.int(length.out = nrow(bandInfo)),
-            ~ PlotWorker(.x, 
-                    avgData %>%
-                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
-                        filter(Type == "before"),
-                bandInfo %>% slice(.y), isTex, "before"))
+    #starData %>% {
+            #map(pull(bandInfo, Band),
+                #function(x) filter(., Band == x))
+        #}  %>%
+        #walk2(seq.int(length.out = nrow(bandInfo)),
+            #~ PlotWorker(.x, 
+                    #avgData %>%
+                        #filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        #filter(Type == "before"),
+                #bandInfo %>% slice(.y), isTex, "before"))
 
-    starData %>% {
-            map(pull(bandInfo, Band),
-                function(x) filter(., Band == x))
-        }  %>%
-        walk2(seq.int(length.out = nrow(bandInfo)),
-            ~ PlotWorker(.x, 
-                    avgData %>%
-                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
-                        filter(Type == "after"),
-                bandInfo %>% slice(.y), isTex, "after"))
+    #starData %>% {
+            #map(pull(bandInfo, Band),
+                #function(x) filter(., Band == x))
+        #}  %>%
+        #walk2(seq.int(length.out = nrow(bandInfo)),
+            #~ PlotWorker(.x, 
+                    #avgData %>%
+                        #filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        #filter(Type == "after"),
+                #bandInfo %>% slice(.y), isTex, "after"))
 }

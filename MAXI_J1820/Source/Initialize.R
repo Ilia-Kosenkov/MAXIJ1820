@@ -8,8 +8,8 @@
     library(tikzDevice)
     library(grid)
 
-    #devtools::install_github("Ilia-Kosenkov/RLibs/package",
-                             #dependencies = FALSE)
+    devtools::install_github("Ilia-Kosenkov/RLibs/package",
+                             dependencies = FALSE)
 
     library(RLibs)
 
