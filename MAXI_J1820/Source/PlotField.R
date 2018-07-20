@@ -247,6 +247,17 @@ PlotWorker <- function(data, avg, bandInfo, isTex, prefix = "") {
     }
 }
 
+LoadLatemostData <- function(path = file.path("Data", "updated_input.dat")) {
+    read.table(path, skip = 5) %>%
+        as.tibble %>%
+        setNames(c("ID", "FIL", "PX", "PY", "P",
+            "Ep", "A", "Ea", "Nobs", "Ph", "JD")) %>%
+        select(-Ph) %>%
+        left_join(Bands, by = c("FIL" = "ID")) %>%
+        select(-Angle, -Px, -Py)
+
+}
+
 if (IsRun()) {
 
     isTex <- TRUE
@@ -254,8 +265,12 @@ if (IsRun()) {
 
     avgData <- CombineResults() %>%
         mutate(AvgID = 10L * as.integer(ID / 10))
-    starData <- CombineResults(pattern = "field_.\\.txt") %>%
-        select(-Type)
+    #starData <- CombineResults(pattern = "field_.\\.txt") %>%
+        #select(-Type)
+
+    # This one uses updated data directly
+    starData <- LoadLatemostData() %>%
+        filter(ID >= 700)
 
     starData %>% {
             map(pull(bandInfo, Band),
@@ -267,16 +282,16 @@ if (IsRun()) {
                         filter(Band == extract2(bandInfo, .y, "Band")),
                 bandInfo %>% slice(.y), isTex, "comb"))
 
-    #starData %>% {
-            #map(pull(bandInfo, Band),
-                #function(x) filter(., Band == x))
-        #}  %>%
-        #walk2(seq.int(length.out = nrow(bandInfo)),
-            #~ PlotWorker(.x, 
-                    #avgData %>%
-                        #filter(Band == extract2(bandInfo, .y, "Band")) %>%
-                        #filter(Type == "before"),
-                #bandInfo %>% slice(.y), isTex, "before"))
+    starData %>% {
+            map(pull(bandInfo, Band),
+                function(x) filter(., Band == x))
+        }  %>%
+        walk2(seq.int(length.out = nrow(bandInfo)),
+            ~ PlotWorker(.x, 
+                    avgData %>%
+                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        filter(Type == "before"),
+                bandInfo %>% slice(.y), isTex, "before"))
 
     #starData %>% {
             #map(pull(bandInfo, Band),
