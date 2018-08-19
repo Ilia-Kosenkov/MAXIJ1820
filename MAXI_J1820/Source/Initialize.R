@@ -7,6 +7,7 @@
     library(RColorBrewer)
     library(tikzDevice)
     library(grid)
+    library(glue)
 
     devtools::install_github("Ilia-Kosenkov/RLibs/package",
                              dependencies = FALSE)
@@ -16,7 +17,7 @@
     if (!dir.exists(file.path("Source")))
         stop("No `Source` directory found.")
 
-    files <- dir(file.path("Source"), pattern = "*.R", full.names = TRUE)
+    files <- dir(file.path("Source"), pattern = "*.R", full.names = TRUE, recursive = TRUE)
     files <- files[!grepl("initialize\\.r", files, TRUE)]
     for (f in files)
         source(f)

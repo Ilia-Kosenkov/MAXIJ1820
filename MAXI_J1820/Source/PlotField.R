@@ -282,16 +282,16 @@ if (IsRun()) {
                         filter(Band == extract2(bandInfo, .y, "Band")),
                 bandInfo %>% slice(.y), isTex, "comb"))
 
-    starData %>% {
-            map(pull(bandInfo, Band),
-                function(x) filter(., Band == x))
-        }  %>%
-        walk2(seq.int(length.out = nrow(bandInfo)),
-            ~ PlotWorker(.x, 
-                    avgData %>%
-                        filter(Band == extract2(bandInfo, .y, "Band")) %>%
-                        filter(Type == "before"),
-                bandInfo %>% slice(.y), isTex, "before"))
+    #starData %>% {
+            #map(pull(bandInfo, Band),
+                #function(x) filter(., Band == x))
+        #}  %>%
+        #walk2(seq.int(length.out = nrow(bandInfo)),
+            #~ PlotWorker(.x, 
+                    #avgData %>%
+                        #filter(Band == extract2(bandInfo, .y, "Band")) %>%
+                        #filter(Type == "before"),
+                #bandInfo %>% slice(.y), isTex, "before"))
 
     #starData %>% {
             #map(pull(bandInfo, Band),
