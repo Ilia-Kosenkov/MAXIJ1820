@@ -35,8 +35,9 @@ ProcessData_2 <- function(data, band = "R", by = 16) {
     
     foreach(x = data[[band]]) %dopar% {
         n <- floor(nrow(x) / by)
-        res <- 1:n %>% map(~ProcessObservations2(data = slice(x, 1:by + by * (.x - 1)),
-            Bands %>% filter(Band == band))) %>%
+        res <- seq_int_len(n) %>% map(~ProcessObservations2(
+                data = slice(x, 1:by + by * (.x - 1)),
+                Bands %>% filter(Band == band))) %>%
             bind_rows
 
         if (n * by < nrow(x)) {
@@ -49,23 +50,40 @@ ProcessData_2 <- function(data, band = "R", by = 16) {
     bind_rows
 }
 
-PlotData <- function(data) {
+PlotData <- function(data, fold = 12.2,
+    titles = list()) {
 
-    list(pol =
-        ggplot(data, aes(x = JD, y = P)) +
-        geom_point() +
-        geom_line() +
-        geom_errorbar(aes(ymin = P - Err, ymax = P + Err)),
-    ang = ggplot(data, aes(x = JD, y = PA)) +
-        geom_point() +
-        geom_line() +
-        geom_errorbar(aes(ymin = PA - AErr, ymax = PA + AErr)))
+    foldInDays <- fold / 24.0
+
+    lData <- data %>%
+        mutate(FoldJD = (JD  / foldInDays) %% 1)
+
+    list(
+         pol =
+            ggplot(data, aes(x = JD, y = P)) +
+            DefaultTheme() +
+            theme(plot.title = element_text(hjust = 0.5)) +
+            geom_point() +
+            geom_errorbar(aes(ymin = P - Err, ymax = P + Err)) +
+            ggtitle(titles$P),
+        ang = ggplot(data, aes(x = JD, y = PA)) +
+            DefaultTheme() +
+            theme(plot.title = element_text(hjust = 0.5)) +
+            geom_point() +
+            geom_errorbar(aes(ymin = PA - AErr, ymax = PA + AErr)) +
+            ggtitle(titles$PA),
+        polFold = ggplot(lData, aes(x = FoldJD, y = P)) +
+            geom_point() +
+            DefaultTheme() +
+            theme(plot.title = element_text(hjust = 0.5)) +
+            geom_errorbar(aes(ymin = P - Err, ymax = P + Err)) +
+            ggtitle(titles$PFol))
 }
 
-PlotPeriodogram <- function(result) {
+PlotPeriodogram <- function(result, title = "LS") {
     w <- seq(1e-10, 4 * pi - 1e-10, length.out = 100)
 
-    xBreaks2 <- c(6:22, 24, 28, 36, 48, 72, 96) / 24
+    xBreaks2 <- c(6:21, 24, 28, 36, 48, 72, 96) / 24
 
 
     prdg <- result %>%
@@ -81,10 +99,57 @@ PlotPeriodogram <- function(result) {
     geom_point() +
     scale_x_continuous(name = expression(nu),
                        sec.axis = sec_axis(~.,
-                       name = expression(P ~ ", h"),
+                       name = expression(P * ", h"),
                        breaks = 1 / xBreaks2,
-                       labels = xBreaks2 * 24
-                       ))
+                       labels = xBreaks2 * 24)) +
+    ylab("PSD") +
+    theme(axis.text.x.top = element_text(vjust = 1,
+            margin = margin(b = 0.6, unit = "npc")),
+            plot.title = element_text(hjust = 0.5)) +
+    ggtitle(title)
+}
+
+GenerateOuput <- function(data, band, avgBy, pFol) {
+
+    dirPath <- file.path("Output", "Periods", band)
+    if (!dir.exists(dirPath))
+        dir.create(dirPath, recursive = TRUE)
+
+    pathTemp <- file.path(dirPath, glue("{band}-by-{avgBy/4}"))
+    pathDat <- pathTemp %+% ".dat"
+    pathPlot <- pathTemp %+% ".tex"
+
+    result <- ProcessData_2(data, band, by = avgBy) %>%
+        filter(P < 1.2) %>%
+        filter(Err < 0.4) %>%
+        filter(AErr < 10)
+
+    result %>%
+        select(-Cov, -SGx, -SGy) %>%
+        WriteFixed(pathDat,
+                    frmt = c("%16.6f", rep("%12.6f", 4),
+                            rep("%9.2f", 2), "%4d"))
+
+    plots <- PlotData(result, pFol,
+            title = list(
+            P = glue("Polarization of {band}, averaged by {avgBy / 4} obs."),
+            PA = glue("Angle of {band}, averaged by {avgBy / 4} obs."),
+            PFol = glue("Pol of {band}, averaged by {avgBy / 4} obs. \\
+                and folded with {pFol} h")))
+
+    plots %<>% append(list(PlotPeriodogram(result,
+        title = glue("LS-spectrum of pol. for {band} filter"))))
+
+    tikz(pathPlot, width = 8, height = 6, standAlone = TRUE)
+    tryCatch({
+                plots %>%
+                    GGPlot2Grob(innerMar =
+                              margin(0.5, 1, 0.5, 1, unit = "cm")) %>%
+                    GrobPlot
+             },
+             finally = dev.off())
+
+    Tex2Pdf(pathPlot, verbose = FALSE)
 }
 
 if (IsRun()) {
@@ -92,16 +157,43 @@ if (IsRun()) {
 
     #obs <<- ReadAllInput()
 
-    result <<- ProcessData_2(obs, by = 12) %>%
-        filter(P < 1.5) %>%
-        filter(Err < 0.4 || is.infinite(Err)) %>%
-        filter(AErr < 20 || is.infinite(AErr)) %T>% print(n = nrow(.))
+    #band <- "V"
+    #avgBy <- 32
+    pFol <- 17
 
-    PlotData(result) %>%
-        GGPlot2Grob %>%
-        GrobPlot
+    for (b in Bands$Band) {
 
-    PlotPeriodogram(result) %>%
-        GGPlot2Grob %>%
-        GrobPlot
+        cat(glue("Processing filter {b}:\n"))
+        from <- 2
+        to <- 45
+        bar <- txtProgressBar(from - 1, to, from - 1, style = 3, char = "|")
+        from:to %>%
+            walk(function(x) {
+                GenerateOuput(obs, b, x * 4, pFol)
+                setTxtProgressBar(bar, x)
+            })
+
+        close(bar)
+    }
+
+    #GenerateOuput(obs, band, 50 * 4, pFol)
+
+    #result <<- ProcessData_2(obs, band, by = avgBy) %>%
+        #filter(P < 1.2) %>%
+        #filter(Err < 0.4) %>%
+        #filter(AErr < 10) %T>% print(n = nrow(.))
+
+    #PlotData(result, pFol,
+        #title = list(
+            #P = glue("Polarization of {band}, averaged by {avgBy / 4} obs."),
+            #PA = glue("Angle of {band}, averaged by {avgBy / 4} obs."),
+            #PFol = glue("Pol of {band}, averaged by {avgBy / 4} obs. \\
+                    #and folded with {pFol} h"))) %>%
+        #GGPlot2Grob %>%
+        #GrobPlot
+
+    #PlotPeriodogram(result,
+        #title = glue("LS-spectrum of {band} filter")) %>%
+        #GGPlot2Grob(innerMar = margin(1, 1, 1, 1, unit = "cm")) %>%
+        #GrobPlot
 }
