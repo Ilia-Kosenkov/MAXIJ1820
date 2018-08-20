@@ -83,6 +83,36 @@
     CompileFortran(file.path("Source", "Fortran"))
 }
 
+.SetUpCluster <- function(n = parallel::detectCores() - 1) {
+    if (n < 2)
+        warning(glue("The number of cores ({n}) is too small. \\
+            It is recommended to allocate at least 2 workers. \\
+            No parallel background is created."))
+    else {
+        assign(".Cluster", Cluster$new(n), envir = .GlobalEnv)
+        .Cluster$Register()
+    }
+}
+
+.InitCluster <- function(cluster = .Cluster) {
+    clusterCall(cluster$ClusterDesc, source,
+                file.path("Source", "Initialize.R"))
+
+    success <- clusterCall(cluster$ClusterDesc, get0,
+                            ".IsInitialized") %>%
+        unlist %>%
+        all
+
+    if (!success) {
+        .Cluster$Dispose()
+        rm(list = ".Cluster", envir = .GlobalEnv)
+        warning("Cluster was not properly initalized.")
+    }
+    else
+        message(glue("Cluster {cluster$ID} was initialized with data."))
+}
+
+
 IsRun <- function() {
     exists(".IsInitialized") && get0(".IsInitialized")
 }
@@ -95,4 +125,13 @@ if (!exists(".IsInitialized") ||
     .Compile()
 
     .IsInitialized <<- TRUE
+}
+
+if (rlang::`%||%`(get0(".IsInitialized"), FALSE) &&
+    rlang::`%||%`(get0(".SetParallel"), FALSE) &&
+    !exists(".Cluster")) {
+
+    .SetUpCluster()
+    .InitCluster()
+
 }
