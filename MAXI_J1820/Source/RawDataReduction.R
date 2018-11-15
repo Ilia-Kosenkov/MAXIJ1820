@@ -29,7 +29,7 @@ ReadDescriptor <- function(path = file.path("Test", "Bin.txt")) {
 ReadData <- function(path) {
     data <- read.csv(path) %>%
         as.tibble %>%
-        rename(JD = T..JD., Ref = Ref1, Obs = Obj1) 
+        rename(JD = T..JD., Ref = Ref1, Obs = Obj1)
 }
 
 ProcessObservations <- function(data,
@@ -197,7 +197,7 @@ ProcessObservations2 <- function(data,
 
         pX <- locData %$% {
             WX %*% PX / sum(WX)
-        } %>% 
+        } %>%
         subtract(bandInfo %>% pull(Px)) %>% 
         as.numeric
         pY <- locData %$% {

@@ -155,45 +155,48 @@ GenerateOuput <- function(data, band, avgBy, pFol) {
 if (IsRun()) {
 
 
-    #obs <<- ReadAllInput()
+    obs <<- ReadAllInput()
 
-    #band <- "V"
-    #avgBy <- 32
+    #pol <<- ProcessData_2(obs, "R", by = 4)
+
+    band <- "R"
+    avgBy <- 4
     pFol <- 17
 
-    for (b in Bands$Band) {
+    #for (b in Bands$Band) {
 
-        cat(glue("Processing filter {b}:\n"))
-        from <- 2
-        to <- 45
-        bar <- txtProgressBar(from - 1, to, from - 1, style = 3, char = "|")
-        from:to %>%
-            walk(function(x) {
-                GenerateOuput(obs, b, x * 4, pFol)
-                setTxtProgressBar(bar, x)
-            })
+        #cat(glue("Processing filter {b}:\n"))
+        #from <- 2
+        #to <- 45
+        #bar <- txtProgressBar(from - 1, to, from - 1, style = 3, char = "|")
+        #from:to %>%
+            #walk(function(x) {
+                #GenerateOuput(obs, b, x * 4, pFol)
+                #setTxtProgressBar(bar, x)
+            #})
 
-        close(bar)
-    }
+        #close(bar)
+    #}
 
     #GenerateOuput(obs, band, 50 * 4, pFol)
 
     #result <<- ProcessData_2(obs, band, by = avgBy) %>%
+        #mutate(Err = 0.01)# %>%
         #filter(P < 1.2) %>%
         #filter(Err < 0.4) %>%
         #filter(AErr < 10) %T>% print(n = nrow(.))
 
-    #PlotData(result, pFol,
-        #title = list(
-            #P = glue("Polarization of {band}, averaged by {avgBy / 4} obs."),
-            #PA = glue("Angle of {band}, averaged by {avgBy / 4} obs."),
-            #PFol = glue("Pol of {band}, averaged by {avgBy / 4} obs. \\
-                    #and folded with {pFol} h"))) %>%
-        #GGPlot2Grob %>%
-        #GrobPlot
+    PlotData(result, pFol,
+        title = list(
+            P = glue("Polarization of {band}, averaged by {avgBy / 4} obs."),
+            PA = glue("Angle of {band}, averaged by {avgBy / 4} obs."),
+            PFol = glue("Pol of {band}, averaged by {avgBy / 4} obs. \\
+                    and folded with {pFol} h"))) %>%
+        GGPlot2Grob %>%
+        GrobPlot
 
-    #PlotPeriodogram(result,
-        #title = glue("LS-spectrum of {band} filter")) %>%
-        #GGPlot2Grob(innerMar = margin(1, 1, 1, 1, unit = "cm")) %>%
-        #GrobPlot
+    PlotPeriodogram(result,
+        title = glue("LS-spectrum of {band} filter")) %>%
+        GGPlot2Grob(innerMar = margin(1, 1, 1, 1, unit = "cm")) %>%
+        GrobPlot
 }
